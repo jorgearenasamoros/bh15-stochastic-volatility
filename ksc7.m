@@ -10,11 +10,18 @@ function [q,m,v2] = ksc7()
 %
 % Outputs (each 7x1):
 %   q  : component probabilities (sum to 1)
-%   m  : component means   (already embed E[log chi^2_1] = -1.2704)
+%   m  : component means, including E[log chi^2_1] = psi(1/2) + log(2) = -1.2703628
 %   v2 : component variances
 %
+% The constants in Table 4 of KSC (1998) are centred, sum(q.*m_table) = 0, and the
+% component means are m_table - 1.2704. Correction (8 October 2026): an earlier
+% version of this file returned the centred constants without the offset. Because
+% h_t is recentred to mean zero at every sweep, the missing offset could not be
+% absorbed by the level of h_t and the estimated volatility path was attenuated.
+%
 % Reference: Kim, Shephard & Chib (1998, RES), Table 4.
-q  = [0.00730; 0.10556; 0.00002; 0.04395; 0.34001; 0.24566; 0.25750];
-m  = [-10.12999; -3.97281; -8.56686; 2.77786; 0.61942; 1.79518; -1.08819];
-v2 = [ 5.79596;  2.61369;  5.17950; 0.16735; 0.64009; 0.34023; 1.26261];
+q      = [0.00730; 0.10556; 0.00002; 0.04395; 0.34001; 0.24566; 0.25750];
+m_tab  = [-10.12999; -3.97281; -8.56686; 2.77786; 0.61942; 1.79518; -1.08819];   % Table 4 (centred)
+m      = m_tab - 1.2703628;                     % add E[log chi^2_1]
+v2     = [ 5.79596;  2.61369;  5.17950; 0.16735; 0.64009; 0.34023; 1.26261];
 end
