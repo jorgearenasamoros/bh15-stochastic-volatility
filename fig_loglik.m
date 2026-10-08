@@ -23,7 +23,7 @@ if nargin < 1, outfile = fullfile(rootdir, 'figures', 'loglik-sv.png'); end
 read_data;                                           % YY, yall, tstart, tend, nlags
 T = size(YY, 1);
 XX = zeros(T, 2*nlags + 1);
-for l = 1:nlags, XX(:, 2*l-1:2*l) = yall(tstart-l:tend-l, :); end
+for l = 1:nlags, XX(:, 2*l-1:2*l) = yall(tstart-l:tend-l, :); end %#ok<USENS> (variables of read_data)
 XX(:, end) = 1;
 H = [];
 for c = 1:4
@@ -38,13 +38,14 @@ Om = (Ew.*w)'*Ew/T;                                  % Omega*
 
 %% figure
 navy = [20 43 141]/255; bg = [238 238 238]/255;      % background of the website (#eee)
-set(groot, 'defaultAxesFontName', 'Helvetica', 'defaultTextFontName', 'Helvetica');
 ga = linspace(-5, 5, 1401); gb = linspace(-5, 5, 1401);
 [AG, BG] = meshgrid(ga, gb);
 lev = -(100:-10:10);                                 % maximum - 100, ..., maximum - 10
 f = figure('Units', 'inches', 'Position', [1 1 6.5 3.4], 'Color', bg, 'Visible', 'off');
-set(f, 'DefaultAxesFontSize', get(groot, 'FactoryAxesFontSize'));   % layout independent of make_figures' defaults
-d1 =BG.^2*Om(1,1) - 2*BG*Om(1,2) + Om(2,2);         % (A Omega A')_11, demand row (-beta, 1)
+% figure-level defaults: the layout does not depend on the session defaults (e.g. those of make_figures)
+set(f, 'DefaultAxesFontName', 'Helvetica', 'DefaultTextFontName', 'Helvetica', ...
+    'DefaultAxesFontSize', get(groot, 'FactoryAxesFontSize'));
+d1 = BG.^2*Om(1,1) - 2*BG*Om(1,2) + Om(2,2);         % (A Omega A')_11, demand row (-beta, 1)
 d2 = AG.^2*Om(1,1) - 2*AG*Om(1,2) + Om(2,2);         % (A Omega A')_22, supply row (-alpha, 1)
 Z = T*log(abs(AG - BG)) - (T/2)*log(d1.*d2);
 Zmax = -(T/2)*log(det(Om));                          % value on the ridge (constant along the curve)

@@ -1,8 +1,8 @@
 function T = mc_table(file)
 %MC_TABLE  The Monte Carlo table of the post, with paired-bootstrap 95% confidence intervals.
 %
-%   mc_table          uses montecarlo/results/mc_estimates.mat (shipped, or rebuilt by mc_collect)
-%   mc_table(file)    another file written by mc_collect
+%   mc_table          uses the shipped estimates, montecarlo/results/mc_estimates.mat
+%   mc_table(file)    a file written by mc_collect, e.g. mc_table('results/mc_estimates_rerun.mat')
 %   T = mc_table(...) also returns the numbers
 %
 %   For each design and object the error of the posterior median is e_r = median_r - truth in
@@ -15,7 +15,8 @@ function T = mc_table(file)
 %   resamples of the replications, paired across the two estimators and the 20 objects (the
 %   interval of the median over objects takes the median in each resample).
 mcdir = fileparts(mfilename('fullpath'));
-if nargin < 1 || isempty(file), file = fullfile(mcdir, 'results', 'mc_estimates.mat'); end
+shipped = nargin < 1 || isempty(file);
+if shipped, file = fullfile(mcdir, 'results', 'mc_estimates.mat'); end
 L = load(file, 'est'); est = L.est;
 names = est.names; z = est.truth(:)';
 iuse = setdiff(1:22, [12 18]);                 % the 20 objects (impact responses to supply excluded)
@@ -54,7 +55,11 @@ for d = 1:nd
     end
     fprintf('%-16s %-24s %-24s %-24s %-24s\n', est.labels{d}, c{:});
 end
-fprintf('Point estimates as in the table of the post; 95%% paired-bootstrap intervals in brackets.\n');
+if shipped
+    fprintf('Point estimates as in the table of the post; 95%% paired-bootstrap intervals in brackets.\n');
+else
+    fprintf('Point estimates from %s; 95%% paired-bootstrap intervals in brackets.\n', file);
+end
 
 fprintf('\nAll objects: MSE ratio [95%% interval]   (* = impact response to supply, not among the 20)\n');
 fprintf('%-16s %8s', 'object', 'truth');

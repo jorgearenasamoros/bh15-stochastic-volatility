@@ -20,7 +20,7 @@ run_all
 
 Figure 1, the contours of the log likelihood for the two slopes given the posterior mean of the volatility path, is drawn by `fig_loglik.m` (called from `make_figures.m`) and saved as `figures/loglik-sv.png`. Figures 2 to 8 are `volatility-factor.png`, `elasticity-posteriors.png`, `historical-decomposition.png`, `historical-decomposition-wages.png`, `unit-irfs.png`, `one-sd-employment.png` and `acf-squared-shocks.png`.
 
-Requirements: MATLAB R2020a or later and the Statistics and Machine Learning Toolbox; the Monte Carlo also needs the Optimization Toolbox. Tested with R2024b.
+Requirements: MATLAB R2020b or later (the figures place their legends with `Layout.Tile` in a tiled layout) and the Statistics and Machine Learning Toolbox; the Monte Carlo also needs the Optimization Toolbox. Tested with R2024b.
 
 ## Files
 
@@ -58,12 +58,12 @@ prints the table of the post with paired-bootstrap 95% confidence intervals, fol
 
 ```matlab
 cd montecarlo
-run_montecarlo     % 3 designs x 500 samples, one file per sample in montecarlo/reps/
-mc_collect         % posterior medians -> montecarlo/results/mc_estimates.mat
-mc_table
+run_montecarlo                               % 3 designs x 500 samples, one file per sample in montecarlo/reps/
+mc_collect                                   % posterior medians -> montecarlo/results/mc_estimates_rerun.mat
+mc_table('results/mc_estimates_rerun.mat')
 ```
 
-`run_montecarlo` distributes the samples with `parfor` when the Parallel Computing Toolbox is installed and runs them one after the other otherwise. It saves each sample as soon as it is done and skips the samples already saved, so it can be stopped and restarted; `run_montecarlo({'dgp2k'}, 1:20)` runs a subset. One sample (both models) takes about 30 seconds on one core of an Intel Core i7-14650HX: about 13 core-hours for the 1,500 samples, or 1.7 hours with 8 parallel workers. Every estimation uses fixed seeds and a single computational thread; with MATLAB R2024b on that machine, re-running samples reproduces the stored estimates bit for bit. Other versions or processors can differ in the last digits, which changes individual draws of a long chain but not the results statistically.
+`run_montecarlo` distributes the samples with `parfor` when the Parallel Computing Toolbox is installed and runs them one after the other otherwise. It saves each sample as soon as it is done and skips the samples already saved, so it can be stopped and restarted; `run_montecarlo({'dgp2k'}, 1:20)` runs a subset, and `mc_collect` then gathers replications 1 to R of the designs present in `montecarlo/reps/`. `mc_collect` writes to a separate file and never overwrites the shipped `results/mc_estimates.mat` unless that path is given as its second argument; `git checkout montecarlo/results/mc_estimates.mat` restores the shipped file. On an Intel Core i7-14650HX, one sample (both models, one core) takes about 15 seconds when it runs alone and about 30 seconds when 8 samples run in parallel; estimated from these times, the 1,500 samples take about 6 hours one after the other, or roughly 1.5 to 2 hours with 8 parallel workers. Every sample runs with fixed seeds and a single computational thread (also on parallel workers); with MATLAB R2024b on that machine, re-running samples reproduces the stored estimates bit for bit. Other versions or processors can differ in the last digits, which changes individual draws of a long chain but not the results statistically.
 
 **Design.** Each sample is drawn from
 
@@ -71,13 +71,13 @@ mc_table
 A0 y_t = B0 x_{t-1} + u_t,    u_it = sqrt(d0_i s_it) z_it,    z_it ~ N(0,1),
 ```
 
-with eight lags and a constant, the dates 1970:Q1–2019:Q4 and, as initial conditions, the eight observed quarters before 1970:Q1. The true slopes are beta = −1.03 and alpha = 0.11, which lie between the posterior medians of the two models; `B0` is the posterior mean of the lag coefficients estimated on the data, and `d0` is the time average of the squared structural shocks `A0 y_t − B0 x_{t−1}` in the data. The three designs differ only in the variance scale `s_it`, which averages one over time, so that `d0_i` is the average variance of shock `i`:
+with eight lags and a constant, the dates 1970:Q1–2019:Q4 and, as initial conditions, the eight observed quarters before 1970:Q1. The true slopes beta = −1.03 and alpha = 0.11, the lag coefficients and constants `B0` and the common log-volatility path `hbar_t` used below come from a preliminary estimation of the stochastic-volatility model on the same data (the posterior median of the slopes and the posterior means of `B` and `h_t`). They are fixed design inputs, stored in `montecarlo/calib.mat`, and do not coincide exactly with the posterior that `run_all` produces. The true slopes lie between its posterior medians with and without stochastic volatility, (−0.99, 0.10) and (−1.12, 0.13); `B0` differs from its posterior mean of `B` with stochastic volatility by up to 0.042 in an element; and `hbar_t` is flatter than its posterior mean of `h_t` (standard deviation 0.38 against 0.59, correlation 0.99), which matters little because the amplitude of the path is set by `k` below. `d0` is the time average of the squared structural shocks `A0 y_t − B0 x_{t−1}` in the data. The three designs differ only in the variance scale `s_it`, which averages one over time, so that `d0_i` is the average variance of shock `i`:
 
 - `dgp1`, constant: `s_it = 1`;
-- `dgp2k`, common factor: `s_it = exp(k hbar_t) / mean_t exp(k hbar_t)` for both shocks, where `hbar_t` is the posterior mean of the common log-volatility path estimated on the data;
+- `dgp2k`, common factor: `s_it = exp(k hbar_t) / mean_t exp(k hbar_t)` for both shocks, where `hbar_t` is the smoothed common log-volatility path of that preliminary estimation (mean zero); only its shape matters, because its amplitude is set by `k`;
 - `dgp3`, shock-specific: `s_it = exp(k_i h_it) / mean_t exp(k_i h_it)`, where `h_it` is a smoothed stochastic-volatility estimate for each structural shock `u_it / sqrt(d0_i)` in the data, with the structural parameters fixed at the truth.
 
-A smoothed path is flatter than the path that generated it, so taking `hbar_t` or `h_it` as the truth would make the simulated data less heteroskedastic than the actual data. The amplitudes are therefore chosen by indirect inference: a stochastic-volatility smoother with the structural parameters fixed at the truth, applied to samples simulated with amplitude `k`, gives a path whose standard deviation (median over simulated samples) equals the standard deviation of the path that the same smoother gives on the data. This yields `k = 1.61` for the common factor and `k = (2.40, 1.61)` for the demand and supply shocks. The calibration is provided as data in `montecarlo/calib.mat`.
+A smoothed path is flatter than the path that generated it, so taking `hbar_t` or `h_it` as the truth would make the simulated data less heteroskedastic than the actual data. The amplitudes are therefore chosen by indirect inference: a stochastic-volatility smoother with the structural parameters fixed at the truth, applied to samples simulated with amplitude `k`, gives a path whose standard deviation (median over simulated samples) equals the standard deviation of the path that the same smoother gives on the data. This yields `k = 1.61` for the common factor and `k = (2.40, 1.61)` for the demand and supply shocks. The calibration is provided as fixed input data in `montecarlo/calib.mat`; the code in this repository reads it but does not regenerate it.
 
 The three designs use the same normal draws `z` in each replication, and each sample is estimated by both models (`hom`, homoskedastic, and `svk`, with the common volatility factor, in the code and the files) with the priors and the sampler of the main code (`mc_estimate.m`, the function form of `gibbs_sv.m`, started at the posterior mode of `A`): chains of 40,000 iterations with 10,000 of burn-in. If the effective sample size of alpha is below 800, the same chain is run to 70,000 iterations and, if it is still below 800, to the length that the observed effective sample size per draw implies for 1.3 × 800, between 100,000 and 250,000 iterations. This applies to 32 of the 3,000 chains.
 
@@ -95,7 +95,7 @@ The 22 objects (`mc_objects.m`) are the two slopes, the four sums of lag coeffic
 | `B0` | 2 × 17 | true lag coefficients and constants of the structural form |
 | `Phi0` | 2 × 17 | true reduced form, `A0 \ B0` |
 | `d0` | 1 × 2 | average variances of the demand and supply shocks, (0.810, 0.106) |
-| `hbar` | 200 × 1 | posterior mean of the common log-volatility path in the data (mean zero) |
+| `hbar` | 200 × 1 | smoothed common log-volatility path in the data, from the preliminary estimation (mean zero); shape of the `dgp2k` factor |
 | `k2` | 1 × 1 | amplitude of the common factor, 1.61 |
 | `s2k` | 200 × 1 | variance scale of `dgp2k`, `exp(k2 hbar) / mean(exp(k2 hbar))` |
 | `h3` | 200 × 2 | smoothed log-volatility of the demand and supply shocks in the data (mean zero) |
@@ -114,7 +114,7 @@ The 22 objects (`mc_objects.m`) are the two slopes, the four sums of lag coeffic
 | `mc_objects.m` | The 22 objects for each posterior draw |
 | `ess_geyer.m` | Effective sample size (Geyer's initial monotone sequence) |
 | `post_val.m` | Log posterior of `A` with `B` and `D` integrated out, for the starting value |
-| `mc_collect.m` | Gathers the posterior medians in `reps/` into `results/mc_estimates.mat` |
+| `mc_collect.m` | Gathers the posterior medians in `reps/` into `results/mc_estimates_rerun.mat` |
 | `mc_table.m` | The table of the post, with bootstrap confidence intervals |
 | `calib.mat` | True parameters and volatility paths |
 | `results/mc_estimates.mat` | Posterior medians of the 22 objects and chain lengths, for every sample and model |

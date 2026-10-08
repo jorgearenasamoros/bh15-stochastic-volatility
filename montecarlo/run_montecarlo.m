@@ -12,15 +12,19 @@ function run_montecarlo(designs, reps, use_parallel, outdir)
 %   montecarlo/reps/<design>/rep_NNNN.mat and skipped if that file already exists, so the run can be
 %   interrupted and resumed. With the Parallel Computing Toolbox the replications are distributed
 %   with parfor over the current parallel pool (or a pool with the default profile); otherwise they
-%   run one after the other. Every estimation uses a single computational thread.
+%   run one after the other. Every replication runs with a single computational thread (set in
+%   run_task, on the client or on the worker).
 %
-%   Run time: one replication (both estimators, 40,000 iterations each) takes about 30 seconds on
-%   one core of an Intel Core i7-14650HX, so the 1,500 replications take about 13 core-hours, about
-%   1.7 hours with 8 parallel workers. The chain-length rule of mc_one_rep.m runs 32 of the 3,000
-%   chains longer.
+%   Run time: on an Intel Core i7-14650HX, one replication (both estimators, 40,000 iterations
+%   each, one core) takes about 15 seconds when it runs alone and about 30 seconds when 8 run in
+%   parallel. Estimated from these times, the 1,500 replications take about 6 hours one after the
+%   other, roughly 1.5 to 2 hours with 8 parallel workers. The chain-length rule of mc_one_rep.m
+%   runs 32 of the 3,000 chains longer.
 %
-%   Afterwards:  mc_collect  gathers the posterior medians into results/mc_estimates.mat and
-%                mc_table    prints the table of the post.
+%   Afterwards, from montecarlo/:
+%     mc_collect                                   gathers the posterior medians in
+%                                                  results/mc_estimates_rerun.mat
+%     mc_table('results/mc_estimates_rerun.mat')   prints the table from them
 if nargin < 1 || isempty(designs), designs = {'dgp1', 'dgp2k', 'dgp3'}; end
 if ischar(designs), designs = {designs}; end
 if nargin < 2 || isempty(reps), reps = 1:500; end
@@ -58,8 +62,6 @@ if use_parallel
         run_task(C, todo(i), outdir);
     end
 else
-    nthr = maxNumCompThreads(1);
-    restore = onCleanup(@() maxNumCompThreads(nthr));
     for i = 1:numel(todo)
         run_task(C, todo(i), outdir);
     end
@@ -68,10 +70,15 @@ fprintf('[%s] done: %d replications in %.1f minutes\n', char(datetime('now')), n
 end
 
 function run_task(C, t, outdir)
-% runs one replication and saves it (through a temporary file, so a killed run leaves no
-% incomplete rep_NNNN.mat)
+% runs one replication with a single computational thread and saves it (through a temporary
+% file, so a killed run leaves no incomplete rep_NNNN.mat)
 f = fullfile(outdir, t.dgp, sprintf('rep_%04d.mat', t.rep));
 if isfile(f), return; end
+try
+    nthr = maxNumCompThreads(1);
+    restore = onCleanup(@() maxNumCompThreads(nthr));
+catch                                          % not every kind of parallel worker supports it
+end
 t0 = tic;
 S = mc_one_rep(C, t.dgp, t.rep);
 tmp = fullfile(outdir, t.dgp, sprintf('tmp_%04d.mat', t.rep));

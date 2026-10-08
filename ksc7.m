@@ -13,11 +13,10 @@ function [q,m,v2] = ksc7()
 %   m  : component means, including E[log chi^2_1] = psi(1/2) + log(2) = -1.2703628
 %   v2 : component variances
 %
-% The constants in Table 4 of KSC (1998) are centred, sum(q.*m_table) = 0, and the
-% component means are m_table - 1.2704. Correction (8 October 2026): an earlier
-% version of this file returned the centred constants without the offset. Because
-% h_t is recentred to mean zero at every sweep, the missing offset could not be
-% absorbed by the level of h_t and the estimated volatility path was attenuated.
+% The constants in Table 4 of KSC (1998) are centred, sum(q.*m_table) = 0; the component
+% means of the mixture for log(chi^2_1) are m_table + E[log chi^2_1] = m_table - 1.2703628.
+% The offset matters here because h_t is recentred to mean zero at every sweep, so its
+% level cannot absorb a shift in the means.
 %
 % Reference: Kim, Shephard & Chib (1998, RES), Table 4.
 q      = [0.00730; 0.10556; 0.00002; 0.04395; 0.34001; 0.24566; 0.25750];
