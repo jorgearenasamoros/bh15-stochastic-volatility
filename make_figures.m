@@ -1,5 +1,6 @@
-% MAKE_FIGURES  The seven figures of the post (in figures/) and every number cited
-% in the text and the table (printed). Reads results/draws.mat (build_draws.m).
+% MAKE_FIGURES  The eight figures of the post (in figures/) and every number cited
+% in the text and the table (printed). Reads results/draws.mat (build_draws.m) and, for
+% Figure 1, the SV chains in results/ (fig_loglik.m).
 
 rootdir = fileparts(mfilename('fullpath'));
 load(fullfile(rootdir,'results','draws.mat'),'R');
@@ -9,7 +10,10 @@ S = style();
 save_png = @(f,name) exportgraphics(f, fullfile(out,name), 'Resolution',218, 'BackgroundColor',S.bg);
 VN = {'Wages','Employment'}; SN = {'Demand','Supply'};
 
-%% Figure 1: common volatility factor
+%% Figure 1: contours of the log likelihood with stochastic volatility
+fig_loglik(fullfile(out,'loglik-sv.png'));
+
+%% Figure 2: common volatility factor
 V = exp(sv.h/2); qv = quantile(V,[0.05 0.16 0.5 0.84 0.95],2);
 f = figure('Units','inches','Position',[1 1 7 3],'Color',S.bg,'Visible','off');
 ax = axes(f); hold(ax,'on');
@@ -24,7 +28,7 @@ lg = legend(ax,[hm h68 h90],{'Median','68% band','90% band'},'Location','northou
     'Orientation','horizontal','Box','off','FontSize',8.5); %#ok<NASGU>
 save_png(f,'volatility-factor.png');
 
-%% Figure 2: posterior histograms of the elasticities and the prior
+%% Figure 3: posterior histograms of the elasticities and the prior
 nm = {'Demand slope \beta','Supply slope \alpha'};
 f = figure('Units','inches','Position',[1 1 7 2.9],'Color',S.bg,'Visible','off');
 t = tiledlayout(f,1,2,'TileSpacing','compact','Padding','compact');
@@ -49,7 +53,7 @@ lg = legend([hs hb hp],{'Posterior, SV','Posterior, no SV','Prior'}, ...
     'Orientation','horizontal','Box','off','FontSize',8.5); lg.Layout.Tile = 'south';
 save_png(f,'elasticity-posteriors.png');
 
-%% Figures 3 and 4: historical decomposition, contributions to 8-quarter growth (SV model)
+%% Figures 4 (employment) and 5 (wages): historical decomposition, contributions to 8-quarter growth (SV model)
 W = 8;
 win = @(m,i) movsum(squeeze(m.hdg(i,:,:,:)), [W-1 0], 2, 'Endpoints','fill');   % n x T x draws
 names = {'historical-decomposition-wages.png','historical-decomposition.png'};
@@ -58,7 +62,7 @@ for i = 1:2
     save_png(f, names{i});
 end
 
-%% Figure 5: responses to a unit structural shock
+%% Figure 6: responses to a unit structural shock
 hmax = size(sv.irfU,3); HO = (0:hmax-1)';
 f = figure('Units','inches','Position',[1 1 7 5],'Color',S.bg,'Visible','off');
 t = tiledlayout(f,2,2,'TileSpacing','compact','Padding','compact');
@@ -76,7 +80,7 @@ lg = legend(hh,{'SV, median','SV, 68% band','No SV, median','No SV, 68% band'}, 
     'Orientation','horizontal','Box','off','FontSize',8.5); lg.Layout.Tile = 'south';
 save_png(f,'unit-irfs.png');
 
-%% Figure 6: one-standard-deviation responses of employment, 2009 and 1995
+%% Figure 7: one-standard-deviation responses of employment, 2009 and 1995
 [~,ihi] = min(abs(time-2009)); [~,ilo] = min(abs(time-1995));
 ehi = exp(sv.h(ihi,:)/2); elo = exp(sv.h(ilo,:)/2);
 f = figure('Units','inches','Position',[1 1 7 2.9],'Color',S.bg,'Visible','off');
@@ -98,7 +102,7 @@ lg = legend([l1 a1 l2 a2],{'2009, median','2009, 68% band','1995, median','1995,
     'Orientation','horizontal','Box','off','FontSize',8.5); lg.Layout.Tile = 'south';
 save_png(f,'one-sd-employment.png');
 
-%% Figure 7: ACF and PACF of the squared structural shocks, draw by draw
+%% Figure 8: ACF and PACF of the squared structural shocks, draw by draw
 read_data;
 XX = []; for l = 1:nlags, XX = [XX yall(tstart-l:tend-l,:)]; end; XX = [XX ones(T,1)]; %#ok<AGROW>
 K = 20; cb = 1.96/sqrt(T); nd = size(sv.a,2);
