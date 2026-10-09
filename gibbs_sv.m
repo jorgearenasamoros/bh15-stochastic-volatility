@@ -13,7 +13,7 @@
 %                       The proposal covariance is adapted during the burn-in only.
 %   2. (b_i,d_ii) | A,H conjugate Normal-inverse-gamma draws
 %   3. h_{1:T} | A,B,D  Kim-Shephard-Chib mixture and scalar FFBS (sample_h_common)
-%   4. (phi,sigma2) | H conjugate draws (sample_psi_sv)
+%   4. (phi,sigma2) | H inverse-gamma draw for sigma2, Metropolis-Hastings step for phi (sample_psi_sv)
 % With SV_on = 0, h_t = 0 and the sampler is the homoskedastic BH15 model.
 %
 % Set by the caller: SV_on, ndraws, nburn, SEED, A_START.
